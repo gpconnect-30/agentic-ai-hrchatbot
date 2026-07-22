@@ -12,7 +12,9 @@ VECTORSTORE_FILENAME = VECTORSTORE_PATH/"chroma_db"
 
 #ollama models
 #Chat model
-OLLAMA_MODEL = "qwen3:8b"
+OLLAMA_MODEL = "qwen3.5:9b"
+#OLLAMA_MODEL = "llama3.2"
+
 
 #Embedding model
 EMBEDDING_MODEL = "nomic-embed-text"
