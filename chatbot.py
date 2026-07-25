@@ -1,6 +1,7 @@
 from langchain_ollama import OllamaLLM
 import config
 from tools.registry import tools_registry
+from prompts import tool_selector_prompt
 class HRChatbot:
     def __init__(self, llm, query_enhancer, retriever, prompt, memory):
         #self.vector_store = self._load_vector_store()
@@ -24,12 +25,9 @@ class HRChatbot:
         return full_response
 
     def _select_tool(self, query):
-        print("enhanced query is: ", query)
-        if "leave balance" in query.lower():
-            answer = "leave_balance"
-            return answer
-        else:
-            return None
+        prompt = tool_selector_prompt.ToolSelectionPrompt().create(query, tools_registry)
+        answer = self.llm.invoke(prompt)
+        return answer
 
     def _execute_tool(self, tool_name, params):
         if tool_name in tools_registry:
@@ -48,16 +46,13 @@ class HRChatbot:
 
     def ask(self, query):
         history = self.memory.get_history()
-        #print(history)
         query_enhanced = self.query_enhancer.enhance(query, history)
-        print("before tool_decision: ", query_enhanced)
         tool_name = self._select_tool(query_enhanced)
-        print("tool name is: ", tool_name)
-        if tool_name:
+        if tool_name == "NONE":
+            tool_result = self._retrive_documents(query_enhanced)
+        else:
             employee_id = 102
             tool_result = self._execute_tool(tool_name, employee_id)
-        else:
-            tool_result = self._retrive_documents(query_enhanced)
         #retrived_docs = self._retrive_documents(query_enhanced)
         genPrompt = self.prompt_builder.create(query, tool_result, history)
         answers = self._ask_llm(genPrompt)
