@@ -7,7 +7,6 @@ class ToolPlannerPrompt:
             params = tool_obj.get('parameters', None)
             tool_lines.append(f"- {tool_name}: {desc} | Args: {params}")
         allowed_tools_with_desc = "\n".join(tool_lines)
-        #print(allowed_tools_with_desc)
         prompt = f"""/no_think
 You are a tool selector. Your ONLY job is to pick the ONLY correct tools.
 
@@ -18,8 +17,9 @@ USER QUERY: "{query}"
 Current authenticated employee:
 employee_id = 104
     
-AVAILABLE TOOLS:
+AVAILABLE ACTIONS:
 {allowed_tools_with_desc}
+- Policy Search (RAG)
 
 Instructions:
 1. If the query requires multiple tools, respond with a JSON array:
@@ -35,6 +35,18 @@ Instructions:
        "args": {{"arg_name": "value"}}
      }}
    ]
+or
+[
+     {{
+       "source": "tools",
+       "tool": "tool_name_1",
+       "args": {{"arg_name": "value"}}
+     }},
+     {{
+       "source": "rag",
+       "args": {{"query":"leave policy" }}
+     }}
+   ]
 2. Respond ONLY with a valid JSON array matching this structure:
 [
    {{
@@ -42,6 +54,13 @@ Instructions:
      "tool": "tool_name",
      "args": {{"arg_name": "value"}}
    }}
+]
+or 
+[
+{{
+       "source": "rag",
+       "args": {{"query":"leave policy" }}
+}}
 ]
 3. If a tool matches, set "source" to "tools".
 
@@ -53,14 +72,9 @@ Instructions:
      "args": {{}}
    }}
 ]
-5. If NO tool matches, set "source" to "rag", "tool" to "NONE", and "args" to {{}}:
-   [{{
-     "source": "rag",
-     "tool": "NONE",
-     "args": {{}}
-   }}]
 
-6. Return ONLY raw JSON with no markdown block fences or extra text.
+
+5. Return ONLY raw JSON with no markdown block fences or extra text.
 
 """
         return prompt

@@ -36,21 +36,26 @@ class HRChatbot:
         return results
 
     def _execute_tool(self, tool_data):
-        tool_name = tool_data.get("tool")
-        tool_params = tool_data.get("args", {})
-        if tool_name in tools_registry:
-            tool_function = tools_registry[tool_name]["function"]
-            results = tool_function(**tool_params)
-            return results
-        else:
-            return {"source": "tools", "success": False, "data": f"Tool {tool_name} is not found"}
+        if tool_data.get("source") == "tools":
+            tool_name = tool_data.get("tool")
+            tool_params = tool_data.get("args", {})
+            if tool_name in tools_registry:
+                tool_function = tools_registry[tool_name]["function"]
+                results = tool_function(**tool_params)
+                return results
+            else:
+                return {"source": "tools", "success": False, "data": f"Tool {tool_name} is not found"}
+        elif tool_data.get("source") == "rag":
+            rag_params = tool_data.get("args", {})
+            rag_result = self._retrive_documents(**rag_params)
+            return rag_result
 
     def ask(self, query):
         history = self.memory.get_history()
         query_enhanced = self.query_enhancer.enhance(query, history)
         #print(query_enhanced)
         tool_data = self._select_tool(query_enhanced)
-        #print(tool_data)
+        #print(f"tool data : {tool_data}")
         tool_result = self._execute_plan(tool_data)
         genPrompt = self.prompt_builder.create(query, tool_result, history)
         answers = self._ask_llm(genPrompt)
