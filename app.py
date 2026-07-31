@@ -6,7 +6,7 @@ from prompts import hr_prompt_builder
 from query_enhancer import QueryEnhancer
 from conversation_memory import ConversationMemory
 
-llm = OllamaLLM(model=config.OLLAMA_MODEL, temperature=0.4, num_ctx=2048)
+llm = OllamaLLM(model=config.OLLAMA_MODEL, temperature=0.5, num_ctx=2048)
 
 embed = OllamaEmbeddings(model=config.EMBEDDING_MODEL)
 vector_store = Chroma(

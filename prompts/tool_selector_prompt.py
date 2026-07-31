@@ -1,6 +1,6 @@
 class ToolPlannerPrompt:
 
-    def create(self, query, tools_registry,history):
+    def create(self, query, execution_history, tools_registry, history):
         tool_lines = []
         for tool_name, tool_obj in tools_registry.items():
             desc = tool_obj['description']
@@ -8,73 +8,44 @@ class ToolPlannerPrompt:
             tool_lines.append(f"- {tool_name}: {desc} | Args: {params}")
         allowed_tools_with_desc = "\n".join(tool_lines)
         prompt = f"""/no_think
-You are a tool selector. Your ONLY job is to pick the ONLY correct tools.
+You are a tool selector. Return ONLY the FIRST action needed for this query.
+The system will loop to get the next action.
 
-USER QUERY: "{query}"
+Query: {query}
 
  Use the chat history to understand follow-up questions. If the user says 'it', 'that', or 'those', resolve them using the previous conversation.
     {history}
+
+Use RAG for company policies, documents, and knowledge-base questions.
+    
+Tools:
+{allowed_tools_with_desc}
+
 Current authenticated employee:
 employee_id = 104
-    
-AVAILABLE ACTIONS:
-{allowed_tools_with_desc}
-- Policy Search (RAG)
-
-Instructions:
-1. If the query requires multiple tools, respond with a JSON array:
-   [
-     {{
-       "source": "tools",
-       "tool": "tool_name_1",
-       "args": {{"arg_name": "value"}}
-     }},
-     {{
-       "source": "tools",
-       "tool": "tool_name_2",
-       "args": {{"arg_name": "value"}}
-     }}
-   ]
-or
-[
-     {{
-       "source": "tools",
-       "tool": "tool_name_1",
-       "args": {{"arg_name": "value"}}
-     }},
-     {{
-       "source": "rag",
-       "args": {{"query":"leave policy" }}
-     }}
-   ]
-2. Respond ONLY with a valid JSON array matching this structure:
-[
-   {{
-     "source": "tools",
-     "tool": "tool_name",
-     "args": {{"arg_name": "value"}}
-   }}
-]
-or 
-[
-{{
-       "source": "rag",
-       "args": {{"query":"leave policy" }}
-}}
-]
-3. If a tool matches, set "source" to "tools".
-
-4. If a tool requires no parameters, use an empty dict for args:
-[
-   {{
-     "source": "tools",
-     "tool": "tool_name",
-     "args": {{}}
-   }}
-]
 
 
-5. Return ONLY raw JSON with no markdown block fences or extra text.
+If the checker says something is missing,
+choose the tool that can retrieve it.
 
+Do NOT repeat a tool unless the previous execution failed.
+Previous actions already done:
+{execution_history if execution_history else "None"}
+
+Return ONLY ONE JSON:
+{{"action": "tool", "tool": "tool_name", "args": {{...}}}}
+OR
+{{"action": "rag", "args": {{"query": "..."}}}}
+OR
+{{"action": "NONE"}}
+
+
+Return ONLY the JSON. Nothing else.
+
+IMPORTANT:
+Never write explanations.
+Never use markdown.
+Never write Python code.
+Your entire response must start with {{ and end with }}.
 """
         return prompt

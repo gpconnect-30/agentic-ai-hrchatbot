@@ -15,7 +15,7 @@ VECTORSTORE_FILENAME = VECTORSTORE_PATH/"chroma_db"
 #OLLAMA_MODEL = "qwen3.5:9b"
 #OLLAMA_MODEL = "llama3.2"
 OLLAMA_MODEL = "qwen3:8b"
-
+#OLLAMA_MODEL = "llama3.2:3b"
 
 #Embedding model
 EMBEDDING_MODEL = "nomic-embed-text"
