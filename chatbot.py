@@ -4,6 +4,7 @@ from tools.registry import tools_registry
 from prompts import tool_selector_prompt
 from prompts.checker_prompt import CheckerPrompt
 from agentstate import AgentState
+from executionresult import ExecutionResult
 
 class HRChatbot:
     def __init__(self, llm, query_enhancer, retriever, prompt, memory):
@@ -28,46 +29,65 @@ class HRChatbot:
     def _planner(self, query, execution_history):
         prompt = tool_selector_prompt.ToolPlannerPrompt().create(query, execution_history ,tools_registry, self.memory)
         raw_answer = self.llm.invoke(prompt)
-        #print(f"planner out : {raw_answer}")
+        print(f"planner out : {raw_answer}")
         answer = json.loads(raw_answer)
         return answer
 
     def _execute_action(self, tool_data):
-        if tool_data.get("action") == "tool":
-            tool_name = tool_data.get("tool")
-            tool_params = tool_data.get("args", {})
+        action_type = tool_data.get("action")
+        tool_name = tool_data.get("tool")
+        args = tool_data.get("args", {})
+
+        results = ExecutionResult(action=action_type)
+
+        if action_type == "tool":
             if tool_name in tools_registry:
+                results.source = tool_name
                 tool_function = tools_registry[tool_name]["function"]
-                results = tool_function(**tool_params)
-                return results
+                data = tool_function(**args)
+
+                if data is None:
+                    results.status = "FAILED"
+                    results.error = f"Employee ID {args.get('employee_id')} is not found"
+                    results.data = None
+                else:
+                    results.data = data
             else:
-                return {"action": "tool", "success": False, "data": f"Tool {tool_name} is not found"}
-        elif tool_data.get("action") == "rag":
-            rag_params = tool_data.get("args", {})
-            rag_result = self._retrive_documents(**rag_params)
-            return rag_result
+                results.status = "FAILED"
+                results.error = f"Tool {tool_name} is not found"
+
+        elif action_type == "rag":
+            results.source = "rag"
+            results.data = self._retrive_documents(**args)
+
+        else:
+            results.status = "FAILED"
+            results.error = f"Unsupported action type: {action_type}"
+
+        return results
 
     def agent_run(self, query, history):
         state = AgentState(query, history)
         state.enhanced_query = self.query_enhancer.enhance(query, history)
         while state.iteration <= 5:
             state.latest_action = self._planner(state.enhanced_query, state.execution_history)
+            print(f"latest action : {state.latest_action}")
             if state.latest_action["action"] == "NONE":
                 break
             else:    
                 state.latest_observation = self._execute_action(state.latest_action)
-            entry = {
-                "action": state.latest_action,
-                "observation": state.latest_observation
-            }
-            state.execution_history.append(entry)
+
+            state.execution_history.append(state.latest_observation)
+            #print(f"execution history is : {state.execution_history}")
             checker_prompt = CheckerPrompt.create(self, state.user_query, state.enhanced_query, state.execution_history)
             raw_answer = self.llm.invoke(checker_prompt)
             checker_answer = json.loads(raw_answer)
-            entry["checker"] = checker_answer
-            #print(state.iteration)
+            if state.execution_history:
+                state.execution_history[-1].checker = checker_answer
+            print(state.execution_history)
+            print(checker_answer)
             last_entry = state.execution_history[-1]
-            if last_entry.get("checker", {}).get("status") == "COMPLETE":
+            if last_entry.checker.get("status") == "COMPLETE":
                 state.finished = True
                 break
             #print(f"execution history : {state.execution_history}")
