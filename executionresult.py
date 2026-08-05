@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
 @dataclass
@@ -9,3 +9,4 @@ class ExecutionResult:
     data: Any = None
     error: Optional[str] = None
     checker: Optional[Dict[str, Any]] = None
+    recoverable: bool = False

@@ -32,6 +32,14 @@ Do NOT repeat a tool unless the previous execution failed.
 Previous actions already done:
 {execution_history if execution_history else "None"}
 
+If the latest ExecutionResult is:
+- FAILED
+- recoverable=False
+- Reason: {execution_history}
+
+Do not retry the same action.
+Return NONE and add the reason as well.
+
 Return ONLY ONE JSON:
 {{"action": "tool", "tool": "tool_name", "args": {{...}}}}
 OR
